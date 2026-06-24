@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard | E-Commerce</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar-brand">
+                <i class="fas fa-shopping-bag"></i> ShopLogo Admin
+            </a>
+            <div class="nav-links" id="auth-links"></div>
+        </div>
+    </nav>
+
+    <main class="container" style="padding: 3rem 1.5rem;">
+        
+        <div class="dashboard-layout">
+            <!-- Sidebar -->
+            <aside class="sidebar-nav">
+                <h3 style="margin-bottom: 1.5rem;">Admin Panel</h3>
+                <a href="#" class="sidebar-link active" onclick="showTab('products')">Manage Products</a>
+                <a href="#" class="sidebar-link" onclick="showTab('orders')">Manage Orders</a>
+            </aside>
+
+            <!-- Main Content -->
+            <section>
+                <!-- Products Tab -->
+                <div id="products-tab">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                        <h2>Products</h2>
+                        <button class="btn btn-primary" onclick="openProductModal()"><i class="fas fa-plus"></i> Add Product</button>
+                    </div>
+                    <div class="card table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>NAME</th>
+                                    <th>PRICE</th>
+                                    <th>CATEGORY</th>
+                                    <th>STOCK</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-products-body">
+                                <tr><td colspan="6" style="text-align: center;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Orders Tab -->
+                <div id="orders-tab" style="display: none;">
+                    <h2 style="margin-bottom: 1.5rem;">Orders</h2>
+                    <div class="card table-responsive">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>USER</th>
+                                    <th>DATE</th>
+                                    <th>TOTAL</th>
+                                    <th>PAID</th>
+                                    <th>STATUS</th>
+                                    <th>ACTION</th>
+                                </tr>
+                            </thead>
+                            <tbody id="admin-orders-body">
+                                <tr><td colspan="7" style="text-align: center;">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <!-- Product Modal -->
+    <div id="product-modal" style="display: none; position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center;">
+        <div class="card" style="width: 100%; max-width: 500px; padding: 2rem; max-height: 90vh; overflow-y: auto;">
+            <h3 id="modal-title" style="margin-bottom: 1.5rem;">Add Product</h3>
+            <form id="product-form">
+                <div class="form-group">
+                    <label class="form-label">Name</label>
+                    <input type="text" id="p-name" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Price</label>
+                    <input type="number" id="p-price" step="0.01" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Image (Upload)</label>
+                    <input type="file" id="p-image" class="form-control" accept="image/*" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Brand</label>
+                    <input type="text" id="p-brand" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <input type="text" id="p-category" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Stock</label>
+                    <input type="number" id="p-stock" class="form-control" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Description</label>
+                    <textarea id="p-description" class="form-control" rows="3" required></textarea>
+                </div>
+                <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                    <button type="button" class="btn btn-outline" onclick="closeProductModal()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save Product</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const user = AuthManager.getUser();
+            if (!user || user.role !== 'admin') {
+                window.location.href = 'index.html'; // Redirect if not admin
+                return;
+            }
+            AuthManager.updateNavLinks();
+            
+            loadAdminProducts();
+            loadAdminOrders();
+
+            // Handle Product Form Submit
+            document.getElementById('product-form').addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const formData = new FormData();
+                formData.append('name', document.getElementById('p-name').value);
+                formData.append('price', document.getElementById('p-price').value);
+                formData.append('brand', document.getElementById('p-brand').value);
+                formData.append('category', document.getElementById('p-category').value);
+                formData.append('stock', document.getElementById('p-stock').value);
+                formData.append('description', document.getElementById('p-description').value);
+                
+                const fileInput = document.getElementById('p-image');
+                if (fileInput.files.length > 0) {
+                    formData.append('image', fileInput.files[0]);
+                }
+
+                const btn = e.target.querySelector('button[type="submit"]');
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+                btn.disabled = true;
+
+                try {
+                    await ApiService.createProduct(formData);
+                    showToast('Product added successfully!');
+                    closeProductModal();
+                    loadAdminProducts();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                } finally {
+                    btn.innerHTML = 'Save Product';
+                    btn.disabled = false;
+                }
+            });
+        });
+
+        function showTab(tabName) {
+            document.querySelectorAll('.sidebar-link').forEach(link => link.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tabName === 'products') {
+                document.getElementById('products-tab').style.display = 'block';
+                document.getElementById('orders-tab').style.display = 'none';
+            } else {
+                document.getElementById('products-tab').style.display = 'none';
+                document.getElementById('orders-tab').style.display = 'block';
+            }
+        }
+
+        async function loadAdminProducts() {
+            const tbody = document.getElementById('admin-products-body');
+            try {
+                // Fetching large number to get all for admin
+                const data = await ApiService.getProducts('', 1, '');
+                // Note: ideally admin should have pagination, but for simplicity we'll just show page 1 (which has limit 10). 
+                // In production, we'd add an endpoint for 'all products' for admin table.
+                
+                const products = data.products;
+
+                if (products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align: center;">No products found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = products.map(product => `
+                    <tr>
+                        <td>${product._id.substring(0, 8)}</td>
+                        <td>${product.name}</td>
+                        <td>$${product.price.toFixed(2)}</td>
+                        <td>${product.category}</td>
+                        <td>${product.stock}</td>
+                        <td>
+                            <button onclick="deleteProduct('${product._id}')" class="btn btn-danger btn-sm"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align: center; color: red;">Failed to load products</td></tr>';
+            }
+        }
+
+        async function deleteProduct(id) {
+            if(confirm('Delete this product?')) {
+                try {
+                    await ApiService.deleteProduct(id);
+                    showToast('Product deleted');
+                    loadAdminProducts();
+                } catch (error) {
+                    showToast(error.message, 'error');
+                }
+            }
+        }
+
+        async function loadAdminOrders() {
+            const tbody = document.getElementById('admin-orders-body');
+            try {
+                const orders = await ApiService.getOrders();
+                
+                if (orders.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No orders found</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = orders.map(order => `
+                    <tr>
+                        <td>${order._id.substring(0, 8)}</td>
+                        <td>${order.user ? order.user.name : 'Deleted User'}</td>
+                        <td>${new Date(order.createdAt).toLocaleDateString()}</td>
+                        <td>$${order.totalPrice.toFixed(2)}</td>
+                        <td>${order.isPaid ? 'Yes' : 'No'}</td>
+                        <td>
+                            <select class="form-control" style="width: auto; padding: 0.25rem;" onchange="updateOrderStatus('${order._id}', this.value)">
+                                <option value="Pending" ${order.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                                <option value="Processing" ${order.status === 'Processing' ? 'selected' : ''}>Processing</option>
+                                <option value="Shipped" ${order.status === 'Shipped' ? 'selected' : ''}>Shipped</option>
+                                <option value="Delivered" ${order.status === 'Delivered' ? 'selected' : ''}>Delivered</option>
+                                <option value="Cancelled" ${order.status === 'Cancelled' ? 'selected' : ''}>Cancelled</option>
+                            </select>
+                        </td>
+                        <td>-</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; color: red;">Failed to load orders</td></tr>';
+            }
+        }
+
+        async function updateOrderStatus(id, status) {
+            try {
+                // If marked Delivered, let's auto mark as paid too for this mock app
+                const isPaid = status === 'Delivered' ? true : false;
+                await ApiService.updateOrderStatus(id, status, isPaid);
+                showToast('Order status updated');
+                loadAdminOrders();
+            } catch (error) {
+                showToast(error.message, 'error');
+                loadAdminOrders(); // Revert select
+            }
+        }
+
+        function openProductModal() {
+            document.getElementById('product-form').reset();
+            document.getElementById('product-modal').style.display = 'flex';
+        }
+
+        function closeProductModal() {
+            document.getElementById('product-modal').style.display = 'none';
+        }
+    </script>
+</body>
+</html>

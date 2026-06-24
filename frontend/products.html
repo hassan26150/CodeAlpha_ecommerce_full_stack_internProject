@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Products | E-Commerce</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar-brand">
+                <i class="fas fa-shopping-bag"></i> ShopLogo
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link">Home</a>
+                <a href="products.html" class="nav-link active">Products</a>
+                <a href="cart.html" class="nav-link">
+                    <i class="fas fa-shopping-cart"></i> Cart
+                    <span id="cart-badge" class="badge badge-primary" style="display: none;">0</span>
+                </a>
+            </div>
+            <div class="nav-links" id="auth-links"></div>
+        </div>
+    </nav>
+
+    <main class="container" style="padding: 3rem 1.5rem;">
+        
+        <div class="dashboard-layout">
+            <!-- Sidebar Filters -->
+            <aside class="sidebar-nav">
+                <h3 style="margin-bottom: 1rem;">Filters</h3>
+                
+                <div class="form-group">
+                    <label class="form-label">Search</label>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" id="search-input" class="form-control" placeholder="Search products...">
+                        <button id="search-btn" class="btn btn-primary"><i class="fas fa-search"></i></button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Category</label>
+                    <select id="category-filter" class="form-control">
+                        <option value="">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Clothing">Clothing</option>
+                        <option value="Home">Home & Kitchen</option>
+                        <option value="Books">Books</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label class="form-label">Sort By</label>
+                    <select id="sort-filter" class="form-control">
+                        <option value="newest">Newest Arrivals</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                    </select>
+                </div>
+            </aside>
+
+            <!-- Product Grid -->
+            <section>
+                <div id="products-loader" class="loader"></div>
+                <div id="products-grid" class="grid grid-cols-3">
+                    <!-- Products injected here -->
+                </div>
+                
+                <!-- Pagination -->
+                <div id="pagination" style="display: flex; justify-content: center; gap: 0.5rem; margin-top: 2rem;">
+                    <!-- Pagination buttons -->
+                </div>
+            </section>
+        </div>
+
+    </main>
+
+    <script src="js/api.js"></script>
+    <script>
+        let currentPage = 1;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            AuthManager.updateNavLinks();
+            CartManager.updateCartBadge();
+            
+            loadProducts();
+
+            document.getElementById('search-btn').addEventListener('click', () => {
+                currentPage = 1;
+                loadProducts();
+            });
+
+            document.getElementById('category-filter').addEventListener('change', () => {
+                currentPage = 1;
+                loadProducts();
+            });
+
+            document.getElementById('sort-filter').addEventListener('change', () => {
+                currentPage = 1;
+                loadProducts(); // We need to update backend api for sort actually, but currently backend has sort implemented
+            });
+        });
+
+        async function loadProducts() {
+            const loader = document.getElementById('products-loader');
+            const grid = document.getElementById('products-grid');
+            const pagination = document.getElementById('pagination');
+            
+            loader.style.display = 'block';
+            grid.innerHTML = '';
+            pagination.innerHTML = '';
+
+            const keyword = document.getElementById('search-input').value;
+            const category = document.getElementById('category-filter').value;
+            const sort = document.getElementById('sort-filter').value;
+
+            try {
+                // Adjusting API call slightly to accommodate sort if we passed it in URL.
+                // Our current api.js doesn't have sort param, let's just fetch and let api.js handle what it can, or we update the endpoint manually here:
+                let url = `/products?pageNumber=${currentPage}`;
+                if (keyword) url += `&keyword=${keyword}`;
+                if (category) url += `&category=${category}`;
+                if (sort) url += `&sort=${sort}`;
+
+                const data = await ApiService.request(url);
+                
+                loader.style.display = 'none';
+
+                if (data.products.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1 / -1; text-align: center; padding: 3rem;"><h3>No products found.</h3></div>';
+                    return;
+                }
+
+                grid.innerHTML = data.products.map(product => `
+                    <div class="card">
+                        <a href="product-details.html#id=${product._id}" class="product-img-wrapper">
+                            <img src="http://localhost:5000${product.imageUrl}" alt="${product.name}">
+                        </a>
+                        <div class="product-body">
+                            <div class="product-category">${product.category}</div>
+                            <h3 class="product-title"><a href="product-details.html#id=${product._id}">${product.name}</a></h3>
+                            <div class="product-rating">
+                                <i class="fas fa-star"></i> ${product.rating} (${product.numReviews})
+                            </div>
+                            <div class="product-footer">
+                                <div class="product-price">$${product.price.toFixed(2)}</div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="product-details.html#id=${product._id}" class="btn btn-outline btn-sm">Details</a>
+                                    <button onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&apos;")})' class="btn btn-primary btn-sm"><i class="fas fa-cart-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                // Render pagination
+                for (let i = 1; i <= data.pages; i++) {
+                    const btn = document.createElement('button');
+                    btn.className = `btn ${i === data.page ? 'btn-primary' : 'btn-outline'} btn-sm`;
+                    btn.innerText = i;
+                    btn.onclick = () => {
+                        currentPage = i;
+                        loadProducts();
+                        window.scrollTo(0, 0);
+                    };
+                    pagination.appendChild(btn);
+                }
+
+            } catch (error) {
+                loader.style.display = 'none';
+                showToast('Failed to load products', 'error');
+            }
+        }
+
+        function addToCart(product) {
+            CartManager.addToCart(product, 1);
+            showToast('Added to cart!');
+        }
+    </script>
+</body>
+</html>

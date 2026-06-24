@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Commerce Platform | Home</title>
+    <meta name="description" content="Discover the best products at unbeatable prices.">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="container">
+            <a href="index.html" class="navbar-brand">
+                <i class="fas fa-shopping-bag"></i> ShopLogo
+            </a>
+            <div class="nav-links">
+                <a href="index.html" class="nav-link active">Home</a>
+                <a href="products.html" class="nav-link">Products</a>
+                <a href="cart.html" class="nav-link">
+                    <i class="fas fa-shopping-cart"></i> Cart
+                    <span id="cart-badge" class="badge badge-primary" style="display: none;">0</span>
+                </a>
+            </div>
+            <div class="nav-links" id="auth-links">
+                <!-- Injected via JS -->
+            </div>
+            <button class="btn btn-outline mobile-menu-btn" style="display: none;">
+                <i class="fas fa-bars"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="container">
+                <h1 class="hero-title">Discover the Best Products</h1>
+                <p class="hero-subtitle">High-quality items curated just for you. Upgrade your lifestyle with our premium selection.</p>
+                <a href="products.html" class="btn btn-primary btn-lg">Shop Now <i class="fas fa-arrow-right"></i></a>
+            </div>
+        </section>
+
+        <!-- Latest Products -->
+        <section class="container" style="padding: 4rem 1.5rem;">
+            <h2 style="text-align: center; margin-bottom: 2rem; font-size: 2rem;">Latest Arrivals</h2>
+            <div id="latest-products" class="grid grid-cols-4">
+                <div class="loader" id="products-loader"></div>
+                <!-- Injected via JS -->
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        <div class="container footer-grid">
+            <div>
+                <h3 class="footer-title">ShopLogo</h3>
+                <p style="color: var(--gray-400);">The ultimate destination for all your shopping needs.</p>
+            </div>
+            <div>
+                <h4 class="footer-title">Quick Links</h4>
+                <ul class="footer-links">
+                    <li><a href="index.html">Home</a></li>
+                    <li><a href="products.html">Products</a></li>
+                    <li><a href="cart.html">Cart</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Support</h4>
+                <ul class="footer-links">
+                    <li><a href="#">FAQ</a></li>
+                    <li><a href="#">Shipping</a></li>
+                    <li><a href="#">Returns</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="mailto:support@example.com">support@example.com</a></li>
+                    <li><a href="tel:+1234567890">+1 (234) 567-890</a></li>
+                </ul>
+            </div>
+        </div>
+        <div style="text-align: center; margin-top: 3rem; padding-top: 1.5rem; border-top: 1px solid var(--gray-600); color: var(--gray-400);">
+            &copy; 2026 E-Commerce Platform. All rights reserved.
+        </div>
+    </footer>
+
+    <script src="js/api.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            AuthManager.updateNavLinks();
+            CartManager.updateCartBadge();
+
+            // Load latest products (max 4)
+            try {
+                const data = await ApiService.getProducts('', 1);
+                const products = data.products.slice(0, 4);
+                
+                const container = document.getElementById('latest-products');
+                document.getElementById('products-loader').style.display = 'none';
+
+                if (products.length === 0) {
+                    container.innerHTML = '<p>No products found.</p>';
+                    return;
+                }
+
+                container.innerHTML = products.map(product => `
+                    <div class="card">
+                        <a href="product-details.html#id=${product._id}" class="product-img-wrapper">
+                            <img src="http://localhost:5000${product.imageUrl}" alt="${product.name}">
+                        </a>
+                        <div class="product-body">
+                            <div class="product-category">${product.category}</div>
+                            <h3 class="product-title"><a href="product-details.html#id=${product._id}">${product.name}</a></h3>
+                            <div class="product-rating">
+                                <i class="fas fa-star"></i> ${product.rating} (${product.numReviews} reviews)
+                            </div>
+                            <div class="product-footer">
+                                <div class="product-price">$${product.price.toFixed(2)}</div>
+                                <div style="display: flex; gap: 0.5rem;">
+                                    <a href="product-details.html#id=${product._id}" class="btn btn-outline btn-sm">Details</a>
+                                    <button onclick='addToCart(${JSON.stringify(product).replace(/'/g, "&apos;")})' class="btn btn-primary btn-sm"><i class="fas fa-cart-plus"></i></button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                document.getElementById('products-loader').style.display = 'none';
+                console.error(error);
+                showToast('Failed to load products', 'error');
+            }
+        });
+
+        function addToCart(product) {
+            CartManager.addToCart(product, 1);
+            showToast('Added to cart!');
+        }
+    </script>
+</body>
+</html>
